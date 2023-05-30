@@ -1,0 +1,41 @@
+Va=0
+TIMR = 0.01
+Tstop =.2
+*CFOPEN,strcat(chrval(1),'Resut'),txt,' '
+
+/SOLU 
+ANTYPE,4
+DMPRAT,0.01 
+TRNOPT,FULL,,DAMP 
+LUMPM,0 
+OUTRES,ALL,ALL
+TINTP,,0.25,0.5,0.5
+KBC,1				        ! Ramped load step
+*Do,t,2*TIMR,Tstop,TIMR
+!*Get,Ele,NODE,Up,VOLT
+
+   
+  Time,t
+FT=0.005*sin(2*3.14*9*t)
+nsel,S,loc,x,0   
+F,all,FZ,FT
+
+
+allsel,all
+
+DDELE,Up,VOLT     !DELETE  VOLTAGW ON SENSORS ELECTRODE 
+
+SOLVE
+
+
+allsel,all
+
+*ENDDO
+
+*use,process.mac
+*CFCLOS
+FINISH
+
+
+
+

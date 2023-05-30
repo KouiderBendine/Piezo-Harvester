@@ -1,0 +1,78 @@
+/SOLU  
+ANTYPE,MODAL                           ! Modal analysis 
+nmodes =  5
+modopt,LANB,nmodes           ! Block Lanczos solver 
+mxpand,nmodes,,,yes          ! Calculate element results and  
+
+DDELE,Up1,VOLT          !DELETE  VOLTAGW ON SENSORS ELECTRODE 
+DDELE,Ub2,VOLT 
+
+                              
+SOLVE
+
+*get,f1,mode,1,freq 
+FINISH 
+
+SAVE
+
+
+/SOLU    
+ANTYPE,SPECTR          PERFORM SPECTRUM ANALYSIS
+SPOPT,PSD,nmodes,ON    ! USE FIRST 2 MODES FROM MODAL ANALYSIS
+
+PSDUNIT,1,ACCG   ! USE G**2/HZ FOR PSD AND DIMENSION IN INCHES
+nsel,s,loc,x,l                  ! Clamp left end of bimorph
+D,all,Uz,0.03         ! APPLY SPECTRUM AT THE SUPPORT POINT
+nsel,all
+psdfrq,1,,1,1000   !input between 1 to 400 Hz 
+psdval,1,0.0475,0.0475 ! WHITE NOISE PSD, VALUES IN  G**2/HZ
+PFACT,1,BASE             ! BASE EXCITATION
+
+DMPRAT,0.05              ! 2% DAMPING
+                       !DELETE  VOLTAGW ON SENSORS 
+
+PSDCOM,2! COMBINE MODES FOR PSD, USE DEFAULT SIGNIFICANCE LEVEL
+psdgraph,1
+PSDRES,DISP,REL   ! CALCULATE RELATIVE DISPLACEMENT SOLUTIONS
+PSDRES,VELO,REL   ! CALCULATE RELATIVE VELOCITY SOLUTIONS
+PSDRES,ACEL,REL   ! CALCULATE RELATIVE ACCELERATION SOLUTIONS
+SOLVE
+FINISH
+
+
+
+ 
+/post1 
+ 
+set,3,1  !for rms of disp1acements  
+set,4,1  !for rms of ve1ocities
+set,5,1  !for rms of acce1erations
+         !acce1erations/980-  ace1. in gs 
+
+fini 
+/post26 
+numvar,30    !prepare  space for 30 variab1es 
+store,psd,2 !store frequencies,  10 to each side of resonance 
+/grid,1 
+/axlab,x, Frequency Hz 
+/axlab,y, PSD
+/GROPT,LOGY,ON  
+nsol,2,disp,u,z,Wtip                 !disp. node  318
+esol,4,11,clmp,s,3,Sben             !bend. str.  at fixed end 
+nSOL,3,Up1,volt,Z,Volt           !voltage of the piezo 
+
+                       
+rpsd,12,2,,1,2,Wtip    !PSD of re1.  disp.  
+rpsd,13,2,,2,2,ACtip   !PSD of velocity  
+rpsd,14,2,,3,2,Vetip   !PSD of Acce1eration,
+                       !node  11 (in cm/sec2/Hz)
+                       !for g 2/Hz~divide  by 9802
+rpsd,15,4,,1,2,BEND    !PSD of bending stress, at fixed end 
+rpsd,16,3,,1,1,volt    !PSD voltage of the piezo 
+
+!integra1s of above variab1es give Mean  Square va1ues 
+int1,22,12,1,,MStip 
+int1,23,13,1,,MSacce1 
+int1,23,14,1,,MSvelocity1 
+int1,24,15,1,,MSbend 
+int1,25,16,1,,volt

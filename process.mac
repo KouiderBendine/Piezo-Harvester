@@ -1,0 +1,17 @@
+/POST1
+
+
+*DO,i,1,20
+  SET,NEXT
+  *get,Ele,NODE,Elecupper,VOLT
+
+  *VWRITE,i,Ele
+   %0.0f,%0.0f
+!*VWRITE,Displacement,epsi1,Force,sigm1,pressure
+ !  %0.0e,%0.0e,%F10.4,%F10.4,%F10.4
+
+
+   *ENDDO ! i
+
+!outres,all,1
+FINISH

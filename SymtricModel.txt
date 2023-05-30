@@ -1,0 +1,324 @@
+Finish
+
+/clear
+/title,  Free Vibration of PiezoFGM Plate - Bendine K.
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!	 PARAMETERS	 !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+/CWD,'D:\Taper_Matlab\Submission\RUNCode'
+*use,inputTaperFGM.inp
+
+! GEOMETRY
+!!--------------------
+symTr = 0  ! 1: Two beam 
+           ! 0: single beam
+
+*set, a  , 1                     ! Beam Width [m]
+*set, a0 , 10e-3                 ! Beam Width [m]  
+*set, l  , l!100e-3              ! Beam Length [m] 
+
+
+*set,ThP,ThP! 0.1e-3               ! Piezo Thickness
+*set,ThS, 10e-4                    ! Substrate Thickness
+*set,Thks,ThS-ThP                  ! Total Thickness
+
+
+*set,zt,0.7e-3
+*set,alf ,alfa               ! Tapering ratio and 
+*set,N   ,N                  ! Polynomial function’s degree
+*set,n_z,PL                  ! Power law index
+
+*set,KeyNumber,20
+*set,DX,l/KeyNumber
+
+! FGM gradation law
+*set,k, 0.2
+*set,VT,0.3
+
+
+! Piezoelectric properties  
+
+s11=16.4e-12
+s22=s11
+s12=-5.74e-12
+s13=-7.22e-12
+s23=s13
+s33=18.8e-12
+s44=47.5e-12
+s55=47.5e-12
+s66=44.3e-12
+
+
+pidns=7700	                 ! Density of PZT
+d31=-179e-12                     ! Piezoelectric strain coefficients, C/N
+d32=-179e-12			 ! Manufacturers data combined with PZT5A mat props
+d33=350e-12
+d24=584e-12
+d16=584e-12
+
+
+ept11=1730                        ! Relative permittivity at constant stress 
+ept22=1730
+ept33=1700
+
+! FGM Material
+!!--------------------
+
+
+! MATERIAL TOP
+*set, E_b, 70e9   ! [Pa]
+*set, nu_b, 0.3
+*set,dens_b,3000
+!
+! MATERIAL BOT
+*set, E_t, 105.70e9  ! [Pa]
+*set, nu_t, 0.29
+*set,dens_t,4429
+
+! MESH
+!!--------------------
+*set, ele_numb_x, 3                        ! Numbre of Element X  direction
+*set, ele_numb_y, 3                        ! Numbre of Element Y  direction
+*set, ele_numb_n, ele_numb_x*ele_numb_y    ! Numbre of Element XY direction
+*set, ele_numb_z, 10                       ! Numbre of Element Z  direction
+
+*set, length_e_x , l/ele_numb_x
+*set, length_e_y , a/ele_numb_y
+*set, length_e_z , Thks/(2*ele_numb_z)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!   mat_fgm_K MACRO  !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+*Create, mat_fgm_K
+   /nopr
+  
+   z_coord = arg2
+   grad_common = (z_coord+0.5)**n_z
+   E_fgm       = (E_t-E_b)*grad_common + E_b
+   nu_fgm      = (nu_t-nu_b)*grad_common + nu_b
+   den_fgm     = (dens_t-dens_b)*grad_common + dens_b
+   /gopr
+*end !mat_fgm_K
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!	  PREP 7	 !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+/PREP7                   !start preprocess module
+
+ET,1,solid5              ! 3-D elecement piezo
+ET,2,solid45             ! 3-D element substrate
+
+MP,DENS,2,dens_m
+MP,EX  ,2,E_m
+MP,PRXY,2,nu_m  
+
+
+!Piezo Properties APC 850 
+
+MP,DENS,1,pidns
+MP,PERX,1,ept11			!Permittivity at constant stress
+MP,PERY,1,ept22
+MP,PERZ,1,ept33
+tb,ANEL,1,,,1                   ! Assembling elastic compliance matrix
+tbda,1,s11,s12,s13
+tbda,7,s22,s23
+tbda,12,s33
+tbda,16,s66
+tbda,19,s55
+tbda,21,s44
+tb,PIEZ,1,,,1                    ! Piezoelectric strain matrix
+tbda,3,d31
+tbda,6,d33
+tbda,9,d32
+tbda,14,d24
+tbda,16,d16
+
+!!+++++++++++++++++++++++++++++++++++++++++++++++
+
+!! Upper Arc keypoints ! formula Used a=a0*(1+alf*x/l)**N
+
+count=0
+*Do,x,0,KeyNumber,1
+count=count+1
+K,count,x*DX,a0*(1+alf*x*DX/l)**N,0
+*enddo
+
+!! Lower Arc keypoints
+
+*Do,x,0,KeyNumber,1
+count=count+1
+K,count,x*DX,-a0*(1+alf*x*DX/l)**N,0
+*enddo
+
+
+!! Upper and Lower Arc Lines keypoints
+
+*Do,i,1,KeyNumber,1
+LSTR,       i,       i+1  
+LSTR,       (KeyNumber+1)+i,       (KeyNumber+2)+i  
+*Enddo
+
+!! Edges Lines
+
+!LSTR,       1,      (KeyNumber+2)
+!LSTR,       KeyNumber+1, (2*KeyNumber+2)
+
+
+*Do,j,1,KeyNumber+1,1
+LSTR,   j    ,      (KeyNumber+1)+j
+*Enddo
+
+
+*Do,k,1,KeyNumber,1
+A, k, k+1, (KeyNumber+1)+k+1, (KeyNumber+1)+k
+*Enddo
+
+!!+++++++++++++++++++++++++++++++++++++++++++++++
+Asel,all
+
+VEXT, All, , , ,,ThS+2*ThP
+vsel,all
+*if,symTr,eq,1,then
+VGEN,2,all, , , ,2*a0*(1+alf*KeyNumber*DX/l)**N, , ,0  
+*endif
+vglue,all
+
+Vsel,all
+
+WPOFFS,,,ThP
+VSBW,ALL
+WPOFFS,,,ThS
+VSBW,ALL
+WPCSYS,,0
+
+Vsel,all
+
+Vglue,all
+
+Asel,s,loc,x,0,DX
+Asel,R,loc,z,ThS+2*ThP
+VEXT,all, , ,0,0,(ThS+2*ThP)*2,,,, 
+
+
+VSEL,S,LOC,Z,ThP,ThS+ThP         ! Selecting beam
+VATT,2,2,2,0                     ! Assigning beam material properties
+!VMESH,ALL
+
+VSEL,S,LOC,Z,0,+ThP             ! Selecting piezo
+Vsel,A,LOC,Z,ThS+ThP,ThS+2*ThP
+VATT,1,1,1,0                    ! Assigning piezo material properties
+
+VSEL,S,LOC,Z,ThS+2*ThP,2*(ThS+2*ThP)     ! Selecting Tip Mass
+VATT,2,1,2,0                              ! Assigning Tip Mass material properties
+
+Allsel,all
+
+!!! Mesh
+
+! MESH SEED
+lsel, s, tan1, x, -1
+lsel, a, tan1, x, +1
+lesize, all, , , ele_numb_x
+lsel, s, tan1, y, -1
+lsel, a, tan1, y, +1
+lesize, all, , , ele_numb_y
+!lsel, s, tan1, z, -1
+!lsel, a, tan1, z, +1
+!lesize, all, , , ele_numb_z
+lsel, all
+numstr,node,12
+vmesh, all
+
+
+! ====================================================
+!!!!!!!!!!!!!!!!!!!!!!!!! FGM MATERIAL PROPERTIES!!!!!!!!!!!!!!!!!!!!!!
+! ====================================================
+counter = 1
+*do, j, ThP,ThP+ThS-ThS/ele_numb_z,ThS/ele_numb_z
+   z_coord = j 
+         counter = counter+1 
+      *use, mat_fgm_K,z_coord      
+      mp, ex,   counter, E_fgm
+      !mp, prxy, counter, nu_fgm
+      mp, dens, counter,  den_fgm 
+     
+     ESEL, S, CENT, z, j, j+ThS/5 
+     emodif, all, mat, counter 
+     
+                
+  esel,all  
+      
+*enddo
+
+!----------------------
+!added resistor
+!---------------------- 
+N,1 ,-l/3,0,2*ThS
+N,2 ,-l/3,0,-2*ThS 
+
+Asel,S,loc,z,ThS+2*ThP 
+Asel,A,loc,z,0
+Nsla,S,1
+Nsel,a,node,,1
+*Get,Up,node,0,num,min
+CP,1,volt,all
+D,Up,VOLT,0,0
+
+
+allsel
+Asel,S,loc,z,ThS+ThP
+Asel,a,loc,z,ThP
+Nsla,S,1
+Nsel,a,node,,2
+*Get,Eleclower,node,0,num,min
+CP,2,volt,all
+D,Eleclower,VOLT,0,0
+
+allsel,all
+ 
+
+                               
+RR=1e3
+ET,3,CIRCU94,0                   ! Set up the resistor 
+R,1,RR                             
+TYPE,3    
+E,Up,Eleclower            ! Parallel the resistor to the 
+!E,1,2                           ! Electrodes of PZT 
+
+allsel,all
+!----------------------
+!Clamp left end of beam
+!----------------------
+nsel,s,loc,x,l                   ! Clamp left end of bimorph
+d,all,ux,0,,,,uy,uz		 ! Defines DOF constraints, clamp the end
+nsel,all
+
+NODDis=node(l,a/2,Thks)
+allsel,all
+iter=iter
+finish
+
+
+/SOLU  
+ANTYPE,MODAL                    ! Modal analysis 
+nmodes =  3
+modopt,LANB,nmodes              ! Block Lanczos solver 
+mxpand,nmodes,,,yes             ! Calculate element results and  
+!NSEL,S,LOC,X,0                 ! SELECT NODES AT X = X,0.1+x1+0.1 
+!D,ALL,ALL                      ! SUPPRESS Z-DISPL AT SELECTED NODES
+!ALLSEL 
+
+
+ 
+                              
+SOLVE 
+FINISH
+
+ 
+! 
+/COM,    **** REVIEW THE RESULTS OF THE MODAL SOLUTION **** 
+! 
+/POST1 
+SET,LIST
+
+*use,Harm.mac

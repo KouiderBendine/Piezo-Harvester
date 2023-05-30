@@ -1,0 +1,61 @@
+/SOLU 
+allsel,all
+Frqrange=200
+ANTYPE,HARM   ! Harmonic analysis 
+hropt,full    ! full harmonic response
+hrout,off     ! print results as amplitudes and phase angles
+outpr,basic,1
+
+HARFRQ,0,Frqrange,              ! Frequency range of analysis 
+NSUBST,Frqrange,                ! Number of frequency steps 
+KBC,1                           ! Impulse loads 
+
+
+nsel,r,loc,x,l                       
+
+!ALPHAD,4.886
+!BETAD,1.2433e-5
+DMPRAT,0.01              ! 2% DAMPING
+accelx=0.0
+accely=0.0
+accelz=-1
+ACEL,accelx,accely,accelz
+
+allsel,all
+ 
+
+DDELE,Up,VOLT            !DELETE  VOLTAGW ON SENSORS ELECTRODE 
+!DDELE,Eleclower,VOLT    !DELETE  VOLTAGW ON SENSORS ELECTRODE 
+
+
+
+NSEL,ALL 
+SOLVE 
+outres,all,all
+FINISH
+
+
+/POST26 			! Enter time history
+/grid,1 
+/axlab,x, Frequency Hz 
+/axlab,y, Voltage 
+!/GROPT,LOGY,ON 
+NSOL,2,Up,volt,Z,Voltage 
+STORE,MERGE 
+XVAR,1  
+PLVAR,2
+FINISH
+
+/POST1
+
+*CFOPEN,strcat(chrval(iter),'Out_Voltage'),txt,' '
+
+*DO,i,1,Frqrange
+   SET,next
+  *Get,Ele,NODE,Up,VOLT
+  *Get,Cuur,NODE,Up,RF,AMPS
+  *VWRITE,Ele
+%0.0f
+
+*ENDDO ! i
+*cfclos 

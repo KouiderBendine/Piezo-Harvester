@@ -1,0 +1,73 @@
+
+/SOLU
+antyp,modal
+nmodes = 6
+MODOPT,LANB,nmodes,0,1000
+MXPAND,nmodes !Specifies 
+!d,P_bot,volt,0
+
+solve
+*get,f1,mode,1,freq 
+*get,f2,mode,2,freq
+*get,f3,mode,3,freq
+
+finish
+
+/POST1
+
+*CFOPEN,Vlt_Time_TEST,txt
+Amplitude =-1e-4
+TIM       =0.005
+Tstop     =0.5
+
+!*set,disp
+!*dim,disp,array,100,1
+!
+!Force=node(L,W/2,0)
+/SOLU
+
+ANTYPE,4
+TRNOPT,FULL,,DAMP 
+LUMPM,0 
+OUTRES,ALL,ALL
+
+DELTIM,TIM                             ! Specifies the time step sizes
+TINTP,,0.25,0.5,0.5
+KBC,1				        ! Ramped load step
+DMPRAT,0.01 
+f=f1
+i=0
+*Do,t,2*TIM,Tstop,TIM
+Time,t
+
+nsel,r,loc,x,0   
+FT=Amplitude*cos(2*3.14*f*t)
+F,all,FZ,FT
+                    
+Allsel,all
+DDELE,Elecupper,VOLT 
+solve
+
+*Get,elecrod,NODE,Elecupper,VOLT
+*VWRITE,t,elecrod
+%0.0f,%0.0f
+
+
+
+*ENDDO
+
+*cfclos
+
+/POST26 			! Enter time history
+/grid,1 
+/axlab,x, Time (s) 
+/axlab,y, Voltage (V)
+!/GROPT,LOGY,ON 
+
+NSOL,3,Elecupper,volt,Z,sesr
+
+STORE,MERGE 
+XVAR,1  
+PLVAR,2,3
+
+FINISH
